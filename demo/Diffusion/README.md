@@ -59,6 +59,7 @@ controlnet-aux      0.0.6
 > NOTE: optionally install HuggingFace [accelerate](https://pypi.org/project/accelerate/) package for faster and less memory-intense model loading.
 
 ### build plugin
+update the trt path in plugin/CMakeLists.txt to your environment trt path
 ```bash
 cd plugin && mkdir build
 cd build && cmake .. && make
