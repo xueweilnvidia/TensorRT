@@ -58,6 +58,12 @@ controlnet-aux      0.0.6
 
 > NOTE: optionally install HuggingFace [accelerate](https://pypi.org/project/accelerate/) package for faster and less memory-intense model loading.
 
+### build plugin
+```bash
+cd plugin && mkdir build
+cd build && cmake .. && make
+```
+
 
 # Running demoDiffusion
 
