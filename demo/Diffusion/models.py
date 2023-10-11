@@ -17,6 +17,8 @@
 
 import os
 import tempfile
+import numpy as np
+from copy import deepcopy
 
 import onnx
 import onnx_graphsurgeon as gs
@@ -104,6 +106,49 @@ class Optimizer():
                     onnx_graph.graph.node[i].input[j] = "hidden_states"
         if return_onnx:
             return onnx_graph
+        
+    def add_groupnorm(self, return_onnx=False):
+        cnt = 0
+        for node in self.graph.nodes:
+            if node.op == "Reshape" and node.o().op == "InstanceNormalization" and node.o().o().op == "Reshape" \
+                    and node.o().o().o().op == "Mul" and node.o().o().o().o().op == "Add":
+
+                last_node = node.o().o().o().o()
+
+                instance_norm = node.o()
+                instance_norm_scale = instance_norm.inputs[1]
+                instance_norm_bias = instance_norm.inputs[2]
+                epsilon = instance_norm.attrs["epsilon"]
+                mul_node = node.o().o().o()
+                add_node = node.o().o().o().o()
+
+                scale = np.ascontiguousarray(np.array(deepcopy(instance_norm_scale.values.tolist()), dtype=np.float32))
+                bias = np.ascontiguousarray(np.array(deepcopy(instance_norm_bias.values.tolist()), dtype=np.float32))
+                gamma = np.ascontiguousarray(np.array(deepcopy(mul_node.inputs[1].values.tolist()), dtype=np.float32))
+                beta = np.ascontiguousarray(np.array(deepcopy(add_node.inputs[1].values.tolist()), dtype=np.float32))
+
+                with_swish = True if node.o().o().o().o().o().op == "Sigmoid" and node.o().o().o().o().o().o().op == "Mul" else False
+                if with_swish:
+                    last_node = node.o().o().o().o().o().o()
+
+                constant_gamma = gs.Constant("gamma_{}".format(cnt), gamma.reshape(-1))
+                constant_beta = gs.Constant("beta_{}".format(cnt), beta.reshape(-1))
+                x = node.inputs[0]
+                group_norm_v = gs.Variable("group_norm_{}".format(cnt), np.dtype(np.float32), x.shape)
+                group_norm = gs.Node("GroupNorm", "GroupNorm_{}".format(cnt),
+                                    attrs={"epsilon": epsilon, "bSwish": with_swish},
+                                    inputs=[x, constant_gamma, constant_beta],
+                                    outputs=[group_norm_v])
+                cnt += 1
+                for n in self.graph.nodes:
+                    if last_node.outputs[0] in n.inputs:
+                        index = n.inputs.index(last_node.outputs[0])
+                        n.inputs[index] = group_norm.outputs[0]
+                last_node.outputs = []
+                self.graph.nodes.append(group_norm)
+        self.info("find groupnorm: " + str(cnt))
+        if return_onnx:
+            return gs.export_onnx(self.graph)
 
 def get_controlnets_path(controlnet_list):
     '''
@@ -310,6 +355,8 @@ class BaseModel():
         opt.info(self.name + ': fold constants')
         opt.infer_shapes()
         opt.info(self.name + ': shape inference')
+        opt.add_groupnorm()
+        opt.info(self.name + ': add groupnorm plugin')
         onnx_opt_graph = opt.cleanup(return_onnx=True)
         opt.info(self.name + ': finished')
         return onnx_opt_graph
@@ -810,6 +857,19 @@ class VAE(BaseModel):
     def get_sample_input(self, batch_size, image_height, image_width):
         latent_height, latent_width = self.check_dims(batch_size, image_height, image_width)
         return torch.randn(batch_size, 4, latent_height, latent_width, dtype=torch.float32, device=self.device)
+
+    def optimize(self, onnx_graph):
+        opt = Optimizer(onnx_graph, verbose=self.verbose)
+        opt.info(self.name + ': original')
+        opt.cleanup()
+        opt.info(self.name + ': cleanup')
+        opt.fold_constants()
+        opt.info(self.name + ': fold constants')
+        opt.infer_shapes()
+        opt.info(self.name + ': shape inference')
+        onnx_opt_graph = opt.cleanup(return_onnx=True)
+        opt.info(self.name + ': finished')
+        return onnx_opt_graph
 
 
 def make_VAE(version, pipeline, hf_token, device, verbose, max_batch_size):

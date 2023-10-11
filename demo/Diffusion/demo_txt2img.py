@@ -18,6 +18,7 @@
 import argparse
 
 from cuda import cudart
+import ctypes
 
 from stable_diffusion_pipeline import StableDiffusionPipeline
 from utilities import PIPELINE_TYPE, TRT_LOGGER, add_arguments, process_pipeline_args
@@ -28,6 +29,9 @@ def parseArgs():
     return parser.parse_args()
 
 if __name__ == "__main__":
+    plugin_libs = ["plugin/build/libplugin.so"]
+    for plugin in plugin_libs:
+        ctypes.cdll.LoadLibrary(plugin)
     print("[I] Initializing StableDiffusion txt2img demo using TensorRT")
     args = parseArgs()
 
