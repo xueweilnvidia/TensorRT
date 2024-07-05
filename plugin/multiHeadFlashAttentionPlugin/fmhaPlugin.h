@@ -17,8 +17,9 @@
 
 #ifndef TRT_FMHA_PLUGIN_H
 #define TRT_FMHA_PLUGIN_H
-#if defined(ENABLE_SM75) || defined(ENABLE_SM80) || defined(ENABLE_SM86) || defined(ENABLE_SM89)
+// #if defined(ENABLE_SM75) || defined(ENABLE_SM80) || defined(ENABLE_SM86) || defined(ENABLE_SM89)
 #include "common/bertCommon.h"
+#include "fmha_flash_attention/include/fmhaRunner.h"
 
 #include <NvInfer.h>
 #include <string>
@@ -28,7 +29,7 @@ namespace nvinfer1
 {
 namespace plugin
 {
-class FusedMultiHeadFlashAttentionKernel;
+// class FusedMultiHeadAttentionXMMAKernelV2;
 class FMHAPlugin : public IPluginV2DynamicExt
 {
 public:
@@ -71,6 +72,9 @@ protected:
     void createMHARunner();
     void allocateSeqlens(int32_t maxBatchSize);
     void initializeSeqlens(int32_t b, int32_t s, void* cu_seqlens_d, cudaStream_t stream = 0);
+    void allocateTileCounter();
+    void initializeTileCounter(cudaStream_t stream = 0);
+
 
 private:
     // data need serialized into engine.
@@ -79,12 +83,14 @@ private:
         int32_t mOptBatchSize{};
         int32_t mOptSeqLen{};
         int32_t mMaxBatchSize{};
-        DataType mDataType{DataType::kFLOAT};
+        DataType mDataType{DataType::kHALF};
     } mSerializationData;
 
     int32_t mSM{};
     bert::cuda_shared_ptr<void> mCuSeqLen;
-    FusedMultiHeadFlashAttentionKernel const* mKernels{};
+    bert::cuda_shared_ptr<uint32_t> tileCounter;
+    // FusedMultiHeadAttentionXMMAKernelV2 const* mKernels{};
+    FusedMHARunnerV2* runner_v2;
 
     std::string const mLayerName;
     std::string mNamespace;
@@ -113,5 +119,5 @@ private:
 } // namespace plugin
 } // namespace nvinfer1
 
-#endif // defined(ENABLE_SM75) || defined(ENABLE_SM80) || defined(ENABLE_SM86) || defined(ENABLE_SM89)
+// #endif // defined(ENABLE_SM75) || defined(ENABLE_SM80) || defined(ENABLE_SM86) || defined(ENABLE_SM89)
 #endif // TRT_FMHA_PLUGIN_H

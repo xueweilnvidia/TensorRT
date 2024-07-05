@@ -15,11 +15,11 @@
  * limitations under the License.
  */
 
-#if defined(ENABLE_SM75) || defined(ENABLE_SM80) || defined(ENABLE_SM86) || defined(ENABLE_SM89)
+// #if defined(ENABLE_SM75) || defined(ENABLE_SM80) || defined(ENABLE_SM86) || defined(ENABLE_SM89)
 #include "fmhaPlugin.h"
 #include "fmha.h"
-#include "fmha_flash_attention/include/commonDatatype.h"
-#include "fmha_flash_attention/include/fmha_flash_attention.h"
+// #include "fmha_flash_attention/include/commonDatatype.h"
+// #include "fmha_flash_attention/include/fmha_flash_attention.h"
 
 namespace
 {
@@ -53,6 +53,9 @@ void FMHAPlugin::init(bool loadCubins)
         allocateSeqlens(mSerializationData.mMaxBatchSize);
         initializeSeqlens(mSerializationData.mOptBatchSize, mSerializationData.mOptSeqLen, mCuSeqLen.get());
 
+        allocateTileCounter();
+        initializeTileCounter();
+
         if (loadCubins)
         {
             createMHARunner();
@@ -66,10 +69,16 @@ void FMHAPlugin::init(bool loadCubins)
 
 void FMHAPlugin::createMHARunner()
 {
+    std::cout<<"hello1"<<std::endl;
     switch (mSerializationData.mDataType)
     {
-    case DataType::kFLOAT: mKernels = getFMHAFlashCubinKernels(plugin::DATA_TYPE_FP32, mSM); break;
-    case DataType::kHALF: mKernels = getFMHAFlashCubinKernels(plugin::DATA_TYPE_FP16, mSM); break;
+    // case DataType::kFLOAT: runner_v2 = new FusedMHARunnerV2(/*Data_type*/ DATA_TYPE_FP32, /*pagedKVFMHA*/ false, /*numHeads*/ 4, /*headSize*/ 128,
+    //     /*qScaling*/ 1.0, /*qkTanhScale*/ 0.0); break;
+    case DataType::kHALF: 
+    runner_v2 = new FusedMHARunnerV2(/*Data_type*/ DATA_TYPE_FP16, /*pagedKVFMHA*/ false, /*numHeads*/ 8, /*headSize*/ 40,
+        /*qScaling*/ 1.0, /*qkTanhScale*/ 0.0); 
+    std::cout<<"new runner_v2 successfully" <<std::endl;
+    break;
     default: break;
     }
 }
@@ -120,7 +129,7 @@ DimsExprs FMHAPlugin::getOutputDimensions(
     out.nbDims = 4;
     out.d[0] = inputs[0].d[0];
     out.d[1] = inputs[0].d[1];
-    out.d[2] = inputs[0].d[2];
+    out.d[2] = inputs[0].d[3];
     out.d[3] = inputs[0].d[4];
     return out;
 }
@@ -128,6 +137,7 @@ DimsExprs FMHAPlugin::getOutputDimensions(
 bool FMHAPlugin::supportsFormatCombination(
     int32_t pos, PluginTensorDesc const* inOut, int32_t nbInputs, int32_t nbOutputs) noexcept
 {
+    std::cout<<"hello3"<<std::endl;
     bool res = false;
     try
     {
@@ -135,10 +145,13 @@ bool FMHAPlugin::supportsFormatCombination(
         auto hasImplement = [this](DataType dt) {
             switch (dt)
             {
-            case DataType::kFLOAT:
-                return getFMHAFlashCubinKernels(plugin::DATA_TYPE_FP32, mSM)->isValid(/*dummy seq*/ 128);
+            // case DataType::kFLOAT:
+            //     return runner_v2->isValid(/*dummy seq*/ 128);
             case DataType::kHALF:
-                return getFMHAFlashCubinKernels(plugin::DATA_TYPE_FP16, mSM)->isValid(/*dummy seq*/ 128);
+                std::cout<<"before valid"<<std::endl;
+                runner_v2->isValid(/*dummy seq*/ 128);
+                std::cout<<"after valid" <<std::endl;
+                return runner_v2->isValid(/*dummy seq*/ 128);;
             default: break;
             }
             return false;
@@ -161,6 +174,7 @@ bool FMHAPlugin::supportsFormatCombination(
     {
         caughtError(e);
     }
+    std::cout<<"hello4"<<std::endl;
     return res;
 }
 
@@ -180,6 +194,20 @@ void FMHAPlugin::allocateSeqlens(int32_t maxBatchSize)
     }
 
     mSerializationData.mMaxBatchSize = maxBatchSize;
+}
+
+void FMHAPlugin::allocateTileCounter()
+{
+    void* cudaMem{nullptr};
+    PLUGIN_CHECK(cudaMalloc(&cudaMem, sizeof(u_int32_t)));
+    bert::make_cuda_shared(tileCounter, cudaMem);
+}
+
+void FMHAPlugin::initializeTileCounter(cudaStream_t stream)
+{
+    u_int32_t counter = 0;
+    PLUGIN_CUASSERT(cudaMemcpyAsync(
+        tileCounter.get(), &counter, sizeof(u_int32_t), cudaMemcpyHostToDevice, stream));
 }
 
 void FMHAPlugin::initializeSeqlens(int32_t b, int32_t s, void* cu_seqlens_d, cudaStream_t stream)
@@ -205,6 +233,7 @@ void FMHAPlugin::initializeSeqlens(int32_t b, int32_t s, void* cu_seqlens_d, cud
 void FMHAPlugin::configurePlugin(
     DynamicPluginTensorDesc const* in, int32_t nbInputs, DynamicPluginTensorDesc const* out, int32_t nbOutputs) noexcept
 {
+    std::cout<<"hello5"<<std::endl;
     try
     {
         int32_t const batchSize = in[0].max.d[0];
@@ -223,6 +252,7 @@ void FMHAPlugin::configurePlugin(
     {
         caughtError(e);
     }
+    std::cout<<"hello6"<<std::endl;
 }
 
 size_t FMHAPlugin::getWorkspaceSize(
@@ -261,12 +291,13 @@ void FMHAPlugin::destroy() noexcept
 int32_t FMHAPlugin::enqueue(PluginTensorDesc const* inputDesc, PluginTensorDesc const* outputDesc,
     void const* const* inputs, void* const* outputs, void* workspace, cudaStream_t stream) noexcept
 {
-    // input[ 0]:  [float16],  (b, s, h, 3, d)
+    // input[ 0]:  [float16],  (b, s, 3, h, d)
     // output[0]:  [float16],  (b,s,h,d)
+    // std::cout<<"hello7"<<std::endl;
     int32_t result{-1};
     try
     {
-        PLUGIN_VALIDATE(mKernels);
+        // PLUGIN_VALIDATE(mKernels);
         PLUGIN_VALIDATE(mSM);
         PLUGIN_VALIDATE(mCuSeqLen);
 
@@ -276,13 +307,15 @@ int32_t FMHAPlugin::enqueue(PluginTensorDesc const* inputDesc, PluginTensorDesc 
         if (batchSize != mSerializationData.mOptBatchSize || seqLen != mSerializationData.mOptSeqLen)
         {
             initializeSeqlens(batchSize, seqLen, mCuSeqLen.get(), stream);
+            initializeTileCounter(stream);
         }
 
         // launch kernel.
-        int32_t const head_num = inputDesc[0].dims.d[2];
+        int32_t const head_num = inputDesc[0].dims.d[3];
         int32_t const size_per_head = inputDesc[0].dims.d[4];
         size_t const total = mSerializationData.mOptBatchSize * mSerializationData.mOptSeqLen;
-        result = runFMHFAKernel(inputs[0], mCuSeqLen.get(), outputs[0], total, mSM, mKernels,
+        // std::cout<<"hello8"<<std::endl;
+        result = runFMHFAKernel(inputs[0], mCuSeqLen.get(), tileCounter.get(), outputs[0], total, mSM, runner_v2,
             mSerializationData.mOptBatchSize, head_num, size_per_head, mSerializationData.mOptSeqLen, stream);
     }
     catch (std::exception const& e)
@@ -303,6 +336,7 @@ FMHAPluginCreator::FMHAPluginCreator()
 
 IPluginV2* FMHAPluginCreator::createPlugin(char const* name, PluginFieldCollection const* fc) noexcept
 {
+    // std::cout<<"hello0"<<std::endl;
     try
     {
         return new FMHAPlugin(name);
@@ -353,7 +387,8 @@ PluginFieldCollection const* FMHAPluginCreator::getFieldNames() noexcept
 {
     return &mFc;
 }
+REGISTER_TENSORRT_PLUGIN(FMHAPluginCreator);
 
 } // namespace plugin
 } // namespace nvinfer1
-#endif // defined(ENABLE_SM75) || defined(ENABLE_SM80) || defined(ENABLE_SM86) || defined(ENABLE_SM89)
+// #endif // defined(ENABLE_SM75) || defined(ENABLE_SM80) || defined(ENABLE_SM86) || defined(ENABLE_SM89)

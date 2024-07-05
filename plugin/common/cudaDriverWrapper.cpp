@@ -39,6 +39,29 @@
 
 using namespace nvinfer1;
 
+
+std::shared_ptr<CUDADriverWrapper> CUDADriverWrapper::getInstance()
+{
+    static std::mutex mutex;
+    static std::weak_ptr<CUDADriverWrapper> instance;
+    std::shared_ptr<CUDADriverWrapper> result = instance.lock();
+    if (result)
+    {
+        return result;
+    }
+    else
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        result = instance.lock();
+        if (!result)
+        {
+            result = std::shared_ptr<CUDADriverWrapper>(new CUDADriverWrapper());
+            instance = result;
+        }
+        return result;
+    }
+}
+
 CUDADriverWrapper::CUDADriverWrapper()
 {
     handle = dllOpen(CUDA_LIB_NAME);

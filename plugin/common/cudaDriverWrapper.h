@@ -33,6 +33,7 @@ class CUDADriverWrapper
 {
 public:
     CUDADriverWrapper();
+    static std::shared_ptr<CUDADriverWrapper> getInstance();
 
     ~CUDADriverWrapper();
 

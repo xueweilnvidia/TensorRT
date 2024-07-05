@@ -94,7 +94,8 @@ T read(const char*& buffer)
 inline int32_t getTrtSMVersionDec(int32_t smVersion)
 {
     // Treat SM89 as SM86 temporarily.
-    return (smVersion == 89) ? 86 : smVersion;
+    // return (smVersion == 89) ? 86 : smVersion;
+    return smVersion;
 }
 
 inline int32_t getTrtSMVersionDec(int32_t majorVersion, int32_t minorVersion)

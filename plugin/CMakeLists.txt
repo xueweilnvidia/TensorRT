@@ -26,63 +26,63 @@ set(PLUGIN_EXPORT_MAP ${TARGET_DIR}/exports.map)
 if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 endif()
-set(ENABLED_SMS "-DENABLE_SM72 -DENABLE_SM75 -DENABLE_SM80 -DENABLE_SM86 -DENABLE_SM87 -DENABLE_SM89 -DENABLE_SM90")
+set(ENABLED_SMS "-DENABLE_SM86 -DENABLE_SM89 -DENABLE_SM90")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ENABLED_SMS}")
 set(PLUGIN_SOURCES)
 set(PLUGIN_CU_SOURCES)
 
 
-set(PLUGIN_LISTS
-    batchTilePlugin
-    batchedNMSPlugin
-    clipPlugin
-    coordConvACPlugin
-    cropAndResizePlugin
-    decodeBbox3DPlugin
-    detectionLayerPlugin
-    disentangledAttentionPlugin
-    efficientNMSPlugin
-    efficientNMSPlugin/tftrt
-    flattenConcat
-    generateDetectionPlugin
-    gridAnchorPlugin
-    groupNormalizationPlugin
-    instanceNormalizationPlugin
-    leakyReluPlugin
-    multilevelCropAndResizePlugin
-    multilevelProposeROI
-    multiscaleDeformableAttnPlugin
-    nmsPlugin
-    normalizePlugin
-    nvFasterRCNN
-    pillarScatterPlugin
-    priorBoxPlugin
-    proposalLayerPlugin
-    proposalPlugin
-    pyramidROIAlignPlugin
-    regionPlugin
-    reorgPlugin
-    resizeNearestPlugin
-    roiAlignPlugin
-    scatterPlugin
-    specialSlicePlugin
-    splitPlugin
-    voxelGeneratorPlugin
-)
+# set(PLUGIN_LISTS
+#     batchTilePlugin
+#     batchedNMSPlugin
+#     clipPlugin
+#     coordConvACPlugin
+#     cropAndResizePlugin
+#     decodeBbox3DPlugin
+#     detectionLayerPlugin
+#     disentangledAttentionPlugin
+#     efficientNMSPlugin
+#     efficientNMSPlugin/tftrt
+#     flattenConcat
+#     generateDetectionPlugin
+#     gridAnchorPlugin
+#     groupNormalizationPlugin
+#     instanceNormalizationPlugin
+#     leakyReluPlugin
+#     multilevelCropAndResizePlugin
+#     multilevelProposeROI
+#     multiscaleDeformableAttnPlugin
+#     nmsPlugin
+#     normalizePlugin
+#     nvFasterRCNN
+#     pillarScatterPlugin
+#     priorBoxPlugin
+#     proposalLayerPlugin
+#     proposalPlugin
+#     pyramidROIAlignPlugin
+#     regionPlugin
+#     reorgPlugin
+#     resizeNearestPlugin
+#     roiAlignPlugin
+#     scatterPlugin
+#     specialSlicePlugin
+#     splitPlugin
+#     voxelGeneratorPlugin
+# )
 
 # Add BERT sources if ${BERT_GENCODES} was populated
-if(BERT_GENCODES)
-    set(BERT_CU_SOURCES)
-    set(PLUGIN_LISTS
-        ${PLUGIN_LISTS}
-        bertQKVToContextPlugin
-        embLayerNormPlugin
-        fcPlugin
-        geluPlugin
-        skipLayerNormPlugin
-        )
-    include_directories(bertQKVToContextPlugin/fused_multihead_attention/include bertQKVToContextPlugin/fused_multihead_attention_v2/include)
-endif()
+# if(BERT_GENCODES)
+#     set(BERT_CU_SOURCES)
+#     set(PLUGIN_LISTS
+#         ${PLUGIN_LISTS}
+#         bertQKVToContextPlugin
+#         embLayerNormPlugin
+#         fcPlugin
+#         geluPlugin
+#         skipLayerNormPlugin
+#         )
+#     include_directories(bertQKVToContextPlugin/fused_multihead_attention/include bertQKVToContextPlugin/fused_multihead_attention_v2/include)
+# endif()
 
 # Add Stable Diffusion sources if ${STABLE_DIFFUSION_GENCODES} was populated
 if(STABLE_DIFFUSION_GENCODES)
@@ -113,16 +113,16 @@ add_subdirectory(common)
 # Set gencodes
 set_source_files_properties(${PLUGIN_CU_SOURCES} PROPERTIES COMPILE_FLAGS "${GENCODES} ${ENABLED_SMS}")
 list(APPEND PLUGIN_SOURCES "${PLUGIN_CU_SOURCES}")
-if (BERT_CU_SOURCES)
-    set_source_files_properties(${BERT_CU_SOURCES} PROPERTIES COMPILE_FLAGS "${BERT_GENCODES} ${ENABLED_SMS}")
-    list(APPEND PLUGIN_SOURCES "${BERT_CU_SOURCES}")
-endif()
+# if (BERT_CU_SOURCES)
+#     set_source_files_properties(${BERT_CU_SOURCES} PROPERTIES COMPILE_FLAGS "${BERT_GENCODES} ${ENABLED_SMS}")
+#     list(APPEND PLUGIN_SOURCES "${BERT_CU_SOURCES}")
+# endif()
 if (STABLE_DIFFUSION_CU_SOURCES)
     set_source_files_properties(${STABLE_DIFFUSION_CU_SOURCES} PROPERTIES COMPILE_FLAGS "${STABLE_DIFFUSION_GENCODES} ${ENABLED_SMS}")
     list(APPEND PLUGIN_SOURCES "${STABLE_DIFFUSION_CU_SOURCES}")
 endif()
 
-list(APPEND PLUGIN_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/api/InferPlugin.cpp")
+# list(APPEND PLUGIN_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/api/InferPlugin.cpp")
 list(APPEND PLUGIN_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../samples/common/logger.cpp")
 
 ################################## SHARED LIBRARY #######################################

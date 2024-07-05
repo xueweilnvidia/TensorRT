@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#if defined(ENABLE_SM75) || defined(ENABLE_SM80) || defined(ENABLE_SM86) || defined(ENABLE_SM89)
+// #if defined(ENABLE_SM75) || defined(ENABLE_SM80) || defined(ENABLE_SM86) || defined(ENABLE_SM89)
 #include "fmha.h"
 
 namespace nvinfer1
@@ -23,22 +23,33 @@ namespace nvinfer1
 namespace plugin
 {
 
-int32_t runFMHFAKernel(void const* devQKV, void* cuSeqlens, void* devOutput, size_t total, int32_t sm,
-    FusedMultiHeadFlashAttentionKernel const* kernels, int32_t b, int32_t h, int32_t d, int32_t s, cudaStream_t stream)
+int32_t runFMHFAKernel(void const* devQKV, void* cuSeqlens, u_int32_t* tileCounter, void* devOutput, size_t total, int32_t sm,
+   FusedMHARunnerV2* runner_v2, int32_t b, int32_t h, int32_t d, int32_t s, cudaStream_t stream)
 {
-    Fused_multihead_flash_attention_params_v2 params
-        = getMHFAParams(/* data_type */ DATA_TYPE_FP16, /* acc_type */ DATA_TYPE_FP16, b, s, h, d, total, devQKV,
-            cuSeqlens, devOutput, /* p_d */ nullptr, /* s_d */ nullptr,
-            /* scale_bmm1 */ 1.F / sqrtf(d), /* scale_softmax */ 1.F, /* scale_bmm2 */ 1.F,
-            /* interleaved */ false,
-            /* ignore_b1opt */ false,
-            /* force_unroll */ true,
-            /* use_int8_scale_max  */ false);
+    // Fused_multihead_flash_attention_params_v2 params
+    //     = getMHFAParams(/* data_type */ DATA_TYPE_FP16, /* acc_type */ DATA_TYPE_FP16, b, s, h, d, total, devQKV,
+    //         cuSeqlens, devOutput, /* p_d */ nullptr, /* s_d */ nullptr,
+    //         /* scale_bmm1 */ 1.F / sqrtf(d), /* scale_softmax */ 1.F, /* scale_bmm2 */ 1.F,
+    //         /* interleaved */ false,
+    //         /* ignore_b1opt */ false,
+    //         /* force_unroll */ true,
+    //         /* use_int8_scale_max  */ false);
 
-    kernels->run(params, stream);
+
+    runner_v2->setup_flags(false, false, false,
+        h /* MQA or GQA */);
+    runner_v2->setup(b, s, s, total, h, d);
+    // std::cout<<"hello9"<<std::endl;
+    
+
+    //scale bmm2 should not be nullptr
+    runner_v2->run(/*inputPtr*/devQKV, /*cuQSeqlenPtr*/ cuSeqlens, /*tileCounterPtr*/ tileCounter, /*scaleBmm2Ptr*/ nullptr,
+        /*outputPtr*/ devOutput, stream);
+
+    // kernels->run(params, stream);
     return 0;
 }
 } // namespace plugin
 } // namespace nvinfer1
-#endif
+// #endif
 

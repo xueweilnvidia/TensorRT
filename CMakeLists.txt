@@ -22,22 +22,26 @@ include(cmake/modules/find_library_create_target.cmake)
 set_ifndef(TRT_LIB_DIR ${CMAKE_BINARY_DIR})
 set_ifndef(TRT_OUT_DIR ${CMAKE_BINARY_DIR})
 
-file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/include/NvInferVersion.h" VERSION_STRINGS REGEX "#define NV_TENSORRT_.*")
+# file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/include/NvInferVersion.h" VERSION_STRINGS REGEX "#define NV_TENSORRT_.*")
 
-foreach(TYPE MAJOR MINOR PATCH BUILD)
-    string(REGEX MATCH "NV_TENSORRT_${TYPE} [0-9]" TRT_TYPE_STRING ${VERSION_STRINGS})
-    string(REGEX MATCH "[0-9]" TRT_${TYPE} ${TRT_TYPE_STRING})
-endforeach(TYPE)
+# foreach(TYPE MAJOR MINOR PATCH BUILD)
+#     string(REGEX MATCH "NV_TENSORRT_${TYPE} [0-9]" TRT_TYPE_STRING ${VERSION_STRINGS})
+#     string(REGEX MATCH "[0-9]" TRT_${TYPE} ${TRT_TYPE_STRING})
+# endforeach(TYPE)
 
-foreach(TYPE MAJOR MINOR PATCH)
-    string(REGEX MATCH "NV_TENSORRT_SONAME_${TYPE} [0-9]" TRT_TYPE_STRING ${VERSION_STRINGS})
-    string(REGEX MATCH "[0-9]" TRT_SO_${TYPE} ${TRT_TYPE_STRING})
-endforeach(TYPE)
+# foreach(TYPE MAJOR MINOR PATCH)
+#     string(REGEX MATCH "NV_TENSORRT_SONAME_${TYPE} [0-9]" TRT_TYPE_STRING ${VERSION_STRINGS})
+#     string(REGEX MATCH "[0-9]" TRT_SO_${TYPE} ${TRT_TYPE_STRING})
+# endforeach(TYPE)
 
-set(TRT_VERSION "${TRT_MAJOR}.${TRT_MINOR}.${TRT_PATCH}" CACHE STRING "TensorRT project version")
-set(ONNX2TRT_VERSION "${TRT_MAJOR}.${TRT_MINOR}.${TRT_PATCH}" CACHE STRING "ONNX2TRT project version")
-set(TRT_SOVERSION "${TRT_SO_MAJOR}" CACHE STRING "TensorRT library so version")
-message("Building for TensorRT version: ${TRT_VERSION}, library version: ${TRT_SOVERSION}")
+# set(TRT_VERSION "${TRT_MAJOR}.${TRT_MINOR}.${TRT_PATCH}" CACHE STRING "TensorRT project version")
+# set(ONNX2TRT_VERSION "${TRT_MAJOR}.${TRT_MINOR}.${TRT_PATCH}" CACHE STRING "ONNX2TRT project version")
+# set(TRT_SOVERSION "${TRT_SO_MAJOR}" CACHE STRING "TensorRT library so version")
+# message("Building for TensorRT version: ${TRT_VERSION}, library version: ${TRT_SOVERSION}")
+
+set(TRT_VERSION 10.1.0.19)
+set(TRT_SOVERSION 10)
+message("Building for TensorRT version: ${TRT_VERSION}")
 
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} g++)
@@ -88,7 +92,7 @@ endif()
 ############################################################################################
 # Dependencies
 
-set(DEFAULT_CUDA_VERSION 11.3.1)
+set(DEFAULT_CUDA_VERSION 12.3)
 set(DEFAULT_CUDNN_VERSION 8.2)
 set(DEFAULT_PROTOBUF_VERSION 3.20.1)
 

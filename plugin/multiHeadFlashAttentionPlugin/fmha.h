@@ -18,14 +18,14 @@
 #ifndef TRT_FMHA_H
 #define TRT_FMHA_H
 
-#include "fmha_flash_attention/include/fmha_flash_attention.h"
+#include "fmha_flash_attention/include/fmhaRunner.h"
 
 namespace nvinfer1
 {
 namespace plugin
 {
-int32_t runFMHFAKernel(void const* devQKV, void* cuSeqlens, void* devOutput, size_t total, int32_t sm,
-    FusedMultiHeadFlashAttentionKernel const* kernels, int32_t b = 2, int32_t h = 8, int32_t d = 64, int32_t s = 4096,
+int32_t runFMHFAKernel(void const* devQKV, void* cuSeqlens, u_int32_t* tileCounter, void* devOutput, size_t total, int32_t sm,
+    FusedMHARunnerV2* kernels, int32_t b = 2, int32_t h = 8, int32_t d = 64, int32_t s = 4096,
     cudaStream_t stream = 0);
 }
 } // namespace nvinfer1
